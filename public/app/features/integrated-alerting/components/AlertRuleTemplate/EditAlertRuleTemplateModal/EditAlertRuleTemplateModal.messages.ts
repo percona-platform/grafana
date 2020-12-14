@@ -3,4 +3,5 @@ export const Messages = {
   submitButton: 'Save',
   title: 'Edit Alert Rule Template',
   editSuccess: 'Alert rule template successfully edited',
+  cancelAction: 'Cancel',
 };
