@@ -2,22 +2,34 @@ import moment from 'moment/moment';
 import {
   AlertRule,
   AlertRuleFilterType,
+  AlertRuleParamType,
   AlertRuleSeverity,
-  AlertRulesListResponseFilter,
+  AlertRulesListPayloadFilter,
   AlertRulesListResponseRule,
-  AlertRulesListResponseTemplate,
-} from '../AlertRules.types';
+  AlertRulesListPayloadTemplate,
+  AlertRulesListPayloadTemplateParamUnits,
+} from './AlertRules.types';
 
-export const formatFilter = (filter: AlertRulesListResponseFilter): string => {
+export const formatFilter = (filter: AlertRulesListPayloadFilter): string => {
   const { key, type, value } = filter;
 
   return `${key}${AlertRuleFilterType[type]}${value}`;
 };
 
-export const formatThreshold = (template: AlertRulesListResponseTemplate): string => {
+export const formatThreshold = (template: AlertRulesListPayloadTemplate): string => {
   const thresholdParam = template.params.find(param => param.name === 'threshold');
 
-  const { value, unit } = thresholdParam;
+  const { unit: paramUnit, type: paramType } = thresholdParam;
+
+  const type = AlertRuleParamType[paramType];
+
+  if (type === AlertRuleParamType.PARAM_TYPE_INVALID) {
+    return 'Invalid type';
+  }
+
+  const value = thresholdParam[type].default;
+
+  const unit = AlertRulesListPayloadTemplateParamUnits[paramUnit];
 
   return `${value}${unit ? ` ${unit}` : ''}`;
 };
@@ -50,4 +62,4 @@ export const formatRule = (alert: AlertRulesListResponseRule): AlertRule => {
   };
 };
 
-export const formatRules = (rules: AlertRulesListResponseRule[]): AlertRule[] => rules.map(formatRule);
+export const formatRules = (rules: AlertRulesListResponseRule[]): AlertRule[] => (rules ? rules.map(formatRule) : []);
