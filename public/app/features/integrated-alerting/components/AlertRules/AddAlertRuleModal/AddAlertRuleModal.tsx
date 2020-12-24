@@ -16,7 +16,13 @@ import { Messages } from './AddAlertRuleModal.messages';
 import { AddAlertRuleModalProps, AddAlertRuleFormValues } from './AddAlertRuleModal.types';
 import { getStyles } from './AddAlertRuleModal.styles';
 import { SEVERITY_OPTIONS } from './AddAlertRulesModal.constants';
-import { formatTemplateOptions, formatChannelsOptions, formatCreateAPIPayload } from './AddAlertRuleModal.utils';
+import {
+  formatTemplateOptions,
+  formatChannelsOptions,
+  formatCreateAPIPayload,
+  formatUpdateAPIPayload,
+  getInitialValues,
+} from './AddAlertRuleModal.utils';
 import { AlertRulesProvider } from '../AlertRules.provider';
 import { AlertRulesService } from '../AlertRules.service';
 import { AlertRuleTemplateService } from '../../AlertRuleTemplate/AlertRuleTemplate.service';
@@ -25,7 +31,7 @@ import { appEvents } from 'app/core/core';
 
 const { required } = validators;
 
-export const AddAlertRuleModal: FC<AddAlertRuleModalProps> = ({ isVisible, setVisible }) => {
+export const AddAlertRuleModal: FC<AddAlertRuleModalProps> = ({ isVisible, setVisible, alertRule }) => {
   const styles = useStyles(getStyles);
   const [templateOptions, setTemplateOptions] = useState<Array<SelectableValue<string>>>();
   const [channelsOptions, setChannelsOptions] = useState<Array<SelectableValue<string>>>();
@@ -48,9 +54,15 @@ export const AddAlertRuleModal: FC<AddAlertRuleModalProps> = ({ isVisible, setVi
     getData();
   }, []);
 
+  const initialValues = getInitialValues(alertRule);
+
   const onSubmit = async (values: AddAlertRuleFormValues) => {
     try {
-      await AlertRulesService.create(formatCreateAPIPayload(values));
+      if (alertRule) {
+        await AlertRulesService.update(formatUpdateAPIPayload(alertRule.rawValues.rule_id, values));
+      } else {
+        await AlertRulesService.create(formatCreateAPIPayload(values));
+      }
       setVisible(false);
       appEvents.emit(AppEvents.alertSuccess, [Messages.addSuccess]);
       getAlertRules();
@@ -67,27 +79,31 @@ export const AddAlertRuleModal: FC<AddAlertRuleModalProps> = ({ isVisible, setVi
       data-qa="add-alert-rule-modal"
     >
       <Form
+        initialValues={initialValues}
         onSubmit={onSubmit}
         render={({ handleSubmit, valid, pristine, submitting }) => (
           <form className={styles.form} onSubmit={handleSubmit} data-qa="add-alert-rule-modal-form">
-            {/* TODO: polish this up */}
-            <Field name="template" validate={required}>
-              {({ input }) => (
-                <>
-                  <label className={styles.label} data-qa="type-field-label">
-                    {Messages.templateField}
-                  </label>
-                  <Select
-                    className={styles.select}
-                    options={templateOptions}
-                    {...input}
-                    data-qa="template-select-input"
-                  />
-                </>
-              )}
-            </Field>
+            {alertRule ? null : (
+              <>
+                <Field name="template" validate={required}>
+                  {({ input }) => (
+                    <>
+                      <label className={styles.label} data-qa="type-field-label">
+                        {Messages.templateField}
+                      </label>
+                      <Select
+                        className={styles.select}
+                        options={templateOptions}
+                        {...input}
+                        data-qa="template-select-input"
+                      />
+                    </>
+                  )}
+                </Field>
 
-            <TextInputField label={Messages.nameField} name="name" validators={[required]} />
+                <TextInputField label={Messages.nameField} name="name" validators={[required]} />
+              </>
+            )}
 
             <TextInputField label={Messages.thresholdField} name="threshold" />
 
@@ -147,7 +163,7 @@ export const AddAlertRuleModal: FC<AddAlertRuleModalProps> = ({ isVisible, setVi
                   disabled={!valid || pristine}
                   loading={submitting}
                 >
-                  {Messages.confirm}
+                  {alertRule ? Messages.update : Messages.create}
                 </LoaderButton>
                 <Button
                   data-qa="add-alert-rule-modal-cancel-button"
