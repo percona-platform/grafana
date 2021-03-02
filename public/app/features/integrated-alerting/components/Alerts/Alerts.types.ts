@@ -33,8 +33,21 @@ export interface AlertsListResponseAlert {
   summary: string;
 }
 
+export interface AlertsTotals {
+  total_items: number;
+  total_pages: number;
+}
+
 export interface AlertsListResponse {
   alerts: AlertsListResponseAlert[];
+  totals: AlertsTotals;
+}
+
+export interface AlertsGetPayload {
+  page_params: {
+    page_size: number;
+    index: number;
+  };
 }
 
 export interface AlertTogglePayload {

@@ -1,14 +1,16 @@
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useStyles, useTheme } from '@grafana/ui';
 import { logger } from '@percona/platform-core';
 import { Column } from 'react-table';
 import { cx } from 'emotion';
 import { Table } from '../Table/Table';
 import { Messages } from '../../IntegratedAlerting.messages';
+import { useStoredTablePageSize } from '../Table/Pagination';
 import { getStyles } from './Alerts.styles';
 import { Alert, AlertStatus } from './Alerts.types';
 import { formatAlerts, getSeverityColors } from './Alerts.utils';
 import { AlertsService } from './Alerts.service';
+import { ALERTS_TABLE_ID } from './Alerts.constants';
 import { AlertRuleSeverity } from '../AlertRules/AlertRules.types';
 import { AlertsActions } from './AlertsActions';
 
@@ -28,6 +30,10 @@ export const Alerts: FC = () => {
   const theme = useTheme();
   const [pendingRequest, setPendingRequest] = useState(true);
   const [data, setData] = useState<Alert[]>([]);
+  const [pageSize, setPageSize] = useStoredTablePageSize(ALERTS_TABLE_ID);
+  const [pageIndex, setPageindex] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const severityColors = useMemo(() => getSeverityColors(theme), [theme]);
   const columns = React.useMemo(
     () => [
@@ -88,8 +94,15 @@ export const Alerts: FC = () => {
   const getAlerts = async () => {
     setPendingRequest(true);
     try {
-      const { alerts } = await AlertsService.list();
+      const { alerts, totals } = await AlertsService.list({
+        page_params: {
+          index: pageIndex,
+          page_size: pageSize || 0,
+        },
+      });
       setData(formatAlerts(alerts));
+      setTotalItems(totals.total_items || 0);
+      setTotalPages(totals.total_pages || 0);
     } catch (e) {
       logger.error(e);
     } finally {
@@ -97,12 +110,27 @@ export const Alerts: FC = () => {
     }
   };
 
-  useEffect(() => {
-    getAlerts();
+  const handlePaginationChanged = useCallback((pageSize: number, pageIndex: number) => {
+    setPageSize(pageSize);
+    setPageindex(pageIndex);
   }, []);
 
+  useEffect(() => {
+    getAlerts();
+  }, [pageSize, pageIndex]);
+
   return (
-    <Table totalItems={data.length} data={data} columns={columns} pendingRequest={pendingRequest} emptyMessage={noData}>
+    <Table
+      totalItems={totalItems}
+      totalPages={totalPages}
+      pageSize={pageSize as number}
+      pageIndex={pageIndex}
+      onPaginationChanged={handlePaginationChanged}
+      data={data}
+      columns={columns}
+      pendingRequest={pendingRequest}
+      emptyMessage={noData}
+    >
       {(rows, table) =>
         rows.map(row => {
           const { prepareRow } = table;
